@@ -18,6 +18,7 @@ MIT License [see LICENSE for details]
 """
 
 import paddle
+paddle.disable_static()
 import paddle.nn as nn
 import numpy as np
 

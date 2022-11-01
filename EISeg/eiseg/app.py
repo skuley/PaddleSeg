@@ -14,6 +14,7 @@
 
 import logging
 import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 import time
 import os.path as osp
 from functools import partial
@@ -30,6 +31,7 @@ import cv2
 import numpy as np
 from PIL import Image
 import paddle
+paddle.disable_static()
 import paddle.nn.functional as F
 
 from eiseg import pjpath, __APPNAME__, logger
