@@ -1672,8 +1672,8 @@ class APP_EISeg(QMainWindow, Ui_EISeg):
         if not self.controller.is_incomplete_mask:
             return True
         res = self.warn(
-            self.tr("完成最后一个目标？"),
-            self.tr("是否完成最后一个目标的标注，不完成不会进行保存。"),
+            self.tr("complete the last goal？"),
+            self.tr("Whether to complete the labeling of the last target，Will not be saved if not completed。"),
             QMessageBox.Yes | QMessageBox.Cancel, )
         if res == QMessageBox.Yes:
             self.finishObject()
@@ -2746,14 +2746,14 @@ class APP_EISeg(QMainWindow, Ui_EISeg):
 
         current_mask = self.getMask()
         if current_mask is None:
-            self.warn(self.tr("未提供传播参考帧"), self.tr("请先在标注传播参考帧再进行传播"))
+            self.warn(self.tr("Propagation reference frame not provided"), self.tr("Please label the propagation reference frame before propagation"))
             return
         if current_mask.max() == 0:
             current_mask = self.video_masks[self.video.cursur]
             # self.warn(self.tr("未新增标注"), self.tr("请先添加新标注再进行传播"))
             # return
         print('-------------start propgation----------------')
-        self.statusbar.showMessage(self.tr("开始传播"))
+        self.statusbar.showMessage(self.tr("start spreading"))
         # set object
         self.video.set_objects(int(max(self.video.k, current_mask.max())))
         self.video.set_images(self.video_images)
@@ -2768,8 +2768,8 @@ class APP_EISeg(QMainWindow, Ui_EISeg):
             self.progress_step_cb)
         end = time.time()
         print("propagation time cost", end - start)
-        self.statusbar.showMessage(self.tr("传播完成!"), 5000)
-        # 传播进度条重置
+        self.statusbar.showMessage(self.tr("Propagation complete!"), 5000)
+        # Propagation progress bar reset
         self.proPropagete.setValue(0)
         self.proPropagete.setFormat('0%')
         self.delAllPolygon()
