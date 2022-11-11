@@ -35,6 +35,8 @@ import paddle
 import paddle.nn.functional as F
 
 from eiseg import pjpath, __APPNAME__, logger
+from torchvision.transforms import transforms
+
 from widget import ShortcutWidget, PolygonAnnotation
 from controller import InteractiveController
 from ui import Ui_EISeg
@@ -1283,7 +1285,7 @@ class APP_EISeg(QMainWindow, Ui_EISeg):
             if len(filePath) == 0:  # The user closes the window without making a choice
                 return
             if osp.splitext(filePath)[-1] in self.video_ext:
-                if not paddle.device.is_compiled_with_cuda(
+                if paddle.device.is_compiled_with_cuda(
                 ):  # TODO: 可以使用GPU却返回False
                     self.warn(
                         self.tr("Please do video annotation on gpu computer"),
@@ -2766,6 +2768,41 @@ class APP_EISeg(QMainWindow, Ui_EISeg):
         self.video_masks = self.video.interact(
             self.one_hot_mask, self.video.cursur, self.progress_total_cb,
             self.progress_step_cb)
+
+        '''
+            TODO: self.video_masks 리턴 형식에 맞게
+            모든 프레임들을 disnet 모델에 태워 output을 뽑고
+            self.video_masks에 있는 outputs들과 교체한다
+        '''
+        transform = transforms.Compose([
+            transforms.Resize((1024, 1024)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                 std=[0.229, 0.224, 0.225])
+        ])
+
+        ret_video_lst = []
+        import pickle
+        tn_outputs =    []
+        for img in self.video_images:
+            tn_img = transform(Image.fromarray(img)).unsqueeze(0)
+            with torch.no_grad():
+                outputs, _ = self.video.disnet(tn_img)
+            tn_outputs.append(outputs[0])
+            output = outputs[0].detach().cpu().squeeze(0).numpy()
+            #TODO ndarray로 바꾸기
+            output = np.array(output*255, np.uint8).squeeze(0)
+            img_output = cv2.resize(output, (560, 480))
+            output = img_output/255
+            output[output >= 0.4] = 1
+            output[output < 0.4] = 0
+            ret_video_lst.append(output)
+        with open('../../jupyter/disnet_outputs.pkl', 'wb') as f:
+            pickle.dump(tn_outputs, f, protocol=pickle.HIGHEST_PROTOCOL)
+        ret_video_lst = np.array(ret_video_lst)
+        self.video_masks = ret_video_lst
+
+
         end = time.time()
         print("propagation time cost", end - start)
         self.statusbar.showMessage(self.tr("Propagation complete!"), 5000)
