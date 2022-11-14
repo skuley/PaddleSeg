@@ -36,6 +36,7 @@ import paddle.nn.functional as F
 
 from eiseg import pjpath, __APPNAME__, logger
 from torchvision.transforms import transforms
+from tqdm import tqdm
 
 from widget import ShortcutWidget, PolygonAnnotation
 from controller import InteractiveController
@@ -1502,7 +1503,7 @@ class APP_EISeg(QMainWindow, Ui_EISeg):
 
             # 如果没找到图片的reader
         if image is None:
-            self.warn("打开图像失败", f"未找到{path}文件对应的读取程序")
+            self.warn("Failed to open image", f"Not found{path}Read program corresponding to the file")
             return
 
         self.image = image
@@ -1686,16 +1687,16 @@ class APP_EISeg(QMainWindow, Ui_EISeg):
 
     def saveImage(self, close=False):
         if self.controller and self.controller.image is not None:
-            # 1. 完成正在交互式标注的标签
+            # 1. Complete the label being interactively annotated
             self.completeLastMask()
-            # 2. 进行保存
+            # 2. to save
             if self.isDirty:
                 if self.actions.auto_save.isChecked():
                     self.exportLabel()
                 else:
                     res = self.warn(
-                        self.tr("保存标签？"),
-                        self.tr("标签尚未保存，是否保存标签"),
+                        self.tr("save label？"),
+                        self.tr("The label has not been saved, whether to save the label"),
                         QMessageBox.Yes | QMessageBox.Cancel, )
                     if res == QMessageBox.Yes:
                         self.exportLabel()
@@ -1726,13 +1727,13 @@ class APP_EISeg(QMainWindow, Ui_EISeg):
         self.video.reset()
 
     def exportLabel(self, saveAs=False, savePath=None, lab_input=None):
-        # 1. 需要处于标注状态
+        # 1. Need to be in annotated state
         if not self.controller or self.controller.image is None:
             return
-        # 2. 完成正在交互式标注的标签
+        # 2. Complete the label being interactively annotated
         self.completeLastMask()
-        # 3. 确定保存路径
-        # 3.1 如果参数指定了保存路径直接存到savePath
+        # 3. Determine the save path
+        # 3.1 If the parameter specifies the save path, save it directly to the save Path
         if not savePath:
             if not saveAs and self.outputDir is not None:
                 # 3.2 指定了标签文件夹，而且不是另存为：根据标签文件夹和文件名出保存路径
@@ -1759,8 +1760,8 @@ class APP_EISeg(QMainWindow, Ui_EISeg):
         if self.video_masks is not None:
             if osp.exists(savePath):
                 res = self.warn(
-                    self.tr("文件夹已经存在"),
-                    self.tr("该文件夹下不为空，您确定继续保存在此路径下吗？"),
+                    self.tr("folder already exists"),
+                    self.tr("This folder is not empty, are you sure you want to save it in this path?"),
                     QMessageBox.Yes | QMessageBox.Cancel, )
                 if res == QMessageBox.Cancel:
                     return
@@ -1768,28 +1769,40 @@ class APP_EISeg(QMainWindow, Ui_EISeg):
             if osp.isdir(savePath):
                 mask_dir = osp.join(savePath, 'mask')
                 overlay_dir = osp.join(savePath, 'overlay')
+                video_dir = osp.join(savePath, 'video')
                 os.makedirs(mask_dir, exist_ok=True)
                 os.makedirs(overlay_dir, exist_ok=True)
+                os.makedirs(video_dir, exist_ok=True)
 
                 progress = QtWidgets.QProgressDialog(self)
-                progress.setWindowTitle("请稍等")
-                progress.setLabelText("正在保存...")
-                progress.setCancelButtonText("取消")
+                progress.setWindowTitle("Please wait")
+                progress.setLabelText("Saving...")
+                progress.setCancelButtonText("Cancel")
                 progress.setMinimumDuration(5)
                 progress.setWindowModality(Qt.WindowModal)
                 progress.setRange(0, self.video.num_frames)
 
+                # video writer
+                fourcc = cv2.VideoWriter_fourcc(*'DIVX')
+                fps = 30.0
+                h,w = self.video_images[0].shape[:2]
+
+                writer = cv2.VideoWriter(osp.join(video_dir, f'{osp.basename(savePath)}.mp4'), fourcc, fps, (w,h))
                 for i in range(0, self.video.num_frames):
                     # Save mask
                     h, w = self.video_masks[i].shape
                     mask = self.video_masks[i].astype('uint8')
                     pseudo = np.zeros([h, w, 3])
+                    ori_img = self.video_images[i]
+                    canvas = np.zeros(ori_img.shape)
+                    canvas[mask!=0] = ori_img[mask!=0]
                     # mask = self.controller.result_mask
                     # print(pseudo.shape, mask.shape)
                     for lab in self.controller.labelList:
                         pseudo[mask == lab.idx, :] = lab.color[::-1]
                     cv2.imwrite(
                         os.path.join(mask_dir, '{:05d}.png'.format(i)), pseudo)
+                    writer.write(canvas.astype(np.uint8))
 
                     # Save overlay
                     overlay = overlay_davis(self.video_images[i],
@@ -1804,11 +1817,11 @@ class APP_EISeg(QMainWindow, Ui_EISeg):
                         break
                 else:
                     progress.setValue(self.video.num_frames)
-                    # QMessageBox.information(self, "提示", "保存成功")
-
+                    # QMessageBox.information(self, "hint", "Successfully saved")
+                writer.release()
                 self.setDirty(False)
                 self.statusbar.showMessage(
-                    self.tr("视频帧成功保存至") + " " + savePath, 5000)
+                    self.tr("Video frame successfully saved to") + " " + savePath, 5000)
                 return
 
         if lab_input is None:
@@ -2765,9 +2778,9 @@ class APP_EISeg(QMainWindow, Ui_EISeg):
         self.one_hot_mask = one_hot_mask.transpose([2, 0, 1]).unsqueeze(1)
 
         start = time.time()
-        self.video_masks = self.video.interact(
-            self.one_hot_mask, self.video.cursur, self.progress_total_cb,
-            self.progress_step_cb)
+        # self.video_masks = self.video.interact(
+        #     self.one_hot_mask, self.video.cursur, self.progress_total_cb,
+        #     self.progress_step_cb)
 
         '''
             TODO: self.video_masks 리턴 형식에 맞게
@@ -2777,14 +2790,14 @@ class APP_EISeg(QMainWindow, Ui_EISeg):
         transform = transforms.Compose([
             transforms.Resize((1024, 1024)),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225])
+            # transforms.Normalize(mean=[0.485, 0.456, 0.406],
+            #                      std=[0.229, 0.224, 0.225])
         ])
 
         ret_video_lst = []
         import pickle
-        tn_outputs =    []
-        for img in self.video_images:
+        tn_outputs = []
+        for idx, img in enumerate(tqdm(self.video_images)):
             tn_img = transform(Image.fromarray(img)).unsqueeze(0)
             with torch.no_grad():
                 outputs, _ = self.video.disnet(tn_img)
@@ -2792,13 +2805,19 @@ class APP_EISeg(QMainWindow, Ui_EISeg):
             output = outputs[0].detach().cpu().squeeze(0).numpy()
             #TODO ndarray로 바꾸기
             output = np.array(output*255, np.uint8).squeeze(0)
-            img_output = cv2.resize(output, (560, 480))
+            h, w = self.image.shape[:2]
+            img_output = cv2.resize(output, (w,h))
             output = img_output/255
-            output[output >= 0.4] = 1
-            output[output < 0.4] = 0
+            output[output >= 0.7] = 1
+            output[output < 0.7] = 0
             ret_video_lst.append(output)
-        with open('../../jupyter/disnet_outputs.pkl', 'wb') as f:
-            pickle.dump(tn_outputs, f, protocol=pickle.HIGHEST_PROTOCOL)
+            ratio =  idx / self.video_masks.shape[0]
+            self.proPropagete.setValue(int(ratio * 100))
+            self.proPropagete.setFormat('%2.1f%%' % (ratio * 100))
+            QApplication.processEvents()
+
+        # with open('../../jupyter/disnet_outputs.pkl', 'wb') as f:
+        #     pickle.dump(tn_outputs, f, protocol=pickle.HIGHEST_PROTOCOL)
         ret_video_lst = np.array(ret_video_lst)
         self.video_masks = ret_video_lst
 
