@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import os
 import os.path as osp
 from functools import partial
 
@@ -94,8 +94,9 @@ class Ui_EISeg(object):
         self.statusbar.setObjectName("statusbar")
         self.statusbar.setStyleSheet("QStatusBar::item {border: none;}")
         MainWindow.setStatusBar(self.statusbar)
+        print(os.getcwd())
         self.statusbar.addPermanentWidget(
-            self.show_logo(osp.join(pjpath, "resource/vitasoft_logo.png")))
+            self.show_logo(osp.join(pjpath, "resource/logo2.png")))
         ## -----
         ## -- 图形区域 --
         ImageRegion = QtWidgets.QHBoxLayout(self.CentralWidget)
@@ -335,12 +336,12 @@ class Ui_EISeg(object):
         self.VSTDock = self.p_create_dock("VSTDock", self.tr("视频分割设置"), widget)
         VSTDock = QtWidgets.QVBoxLayout()
         VSTDock.setObjectName("VSTDock")
-        self.btn3DParamsSelect = self.p_create_button(
-            "btn3DParamsLoad",
-            self.tr("加载传播网络参数"),
-            osp.join(pjpath, "resource/Model.png"),
-            "", )
-        VSTDock.addWidget(self.btn3DParamsSelect)
+        # self.btn3DParamsSelect = self.p_create_button(
+        #     "btn3DParamsLoad",
+        #     self.tr("加载传播网络参数"),
+        #     osp.join(pjpath, "resource/Model.png"),
+        #     "", )
+        # VSTDock.addWidget(self.btn3DParamsSelect)
         self.btnPropagate = self.p_create_button(
             "btnPropagate",
             self.tr("传播"),
@@ -356,7 +357,7 @@ class Ui_EISeg(object):
         proLayer.addWidget(self.proPropagete)
         VSTDock.addLayout(proLayer)
         horizontalLayout.addLayout(VSTDock)
-        MainWindow.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.VSTDock)
+        MainWindow.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.VSTDock)
         # 3d显示
         widget = QtWidgets.QWidget()
         horizontalLayout = QtWidgets.QHBoxLayout(widget)
@@ -367,10 +368,10 @@ class Ui_EISeg(object):
         TDRegion.addWidget(self.vtkWidget)
         horizontalLayout.addLayout(TDRegion)
         MainWindow.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.TDDock)
-        # 视频播放功能区域
+        # Video playback function area
         widget = QtWidgets.QWidget()
         verticalLayout = QtWidgets.QVBoxLayout(widget)
-        self.VideoDock = self.p_create_dock("VideoDock", self.tr("时间轴"), widget)
+        self.VideoDock = self.p_create_dock("VideoDock", self.tr("Timeline"), widget)
         VideoRegion = QtWidgets.QHBoxLayout()
         VideoRegion.setObjectName("VideoRegion")
         self.videoPlay = self.p_create_button(

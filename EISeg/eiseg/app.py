@@ -264,7 +264,7 @@ class APP_EISeg(QMainWindow, Ui_EISeg):
         self.btnAddClass.clicked.connect(self.addLabel)
 
         self.btnParamsSelect.clicked.connect(self.changeParam)  # Model parameter selection
-        self.btn3DParamsSelect.clicked.connect(self.changePropgationParam)
+        # self.btn3DParamsSelect.clicked.connect(self.changePropgationParam)
         self.cheWithMask.stateChanged.connect(self.chooseMode)  # with_mask
         self.btnPropagate.clicked.connect(self.on_propgation)
 
