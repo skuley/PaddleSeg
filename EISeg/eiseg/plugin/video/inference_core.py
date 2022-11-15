@@ -307,6 +307,7 @@ class InferenceCore:
         Return: all mask results in np format for DAVIS evaluation
         """
         self.interacted.add(idx)
+
         mask, _ = pad_divide_by(mask, 16, mask.shape[-2:])
         # print('self.k is %d' % self.k)
         self.mask_diff = mask - self.prob[:, idx]
