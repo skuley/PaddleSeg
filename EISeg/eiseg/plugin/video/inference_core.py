@@ -35,7 +35,10 @@ class InferenceCore:
 
         print(os.getcwd())
         model_path = 'disnet.ckpt'
+        print(os.path.isfile(model_path))
         self.disnet = load_pytorch_model(model_path)
+        self.disnet = self.disnet.cuda()
+        self.disnet.eval()
 
         self.cursur = 0
 

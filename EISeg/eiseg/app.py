@@ -2808,8 +2808,9 @@ class APP_EISeg(QMainWindow, Ui_EISeg):
             h, w = self.image.shape[:2]
             img_output = cv2.resize(output, (w,h))
             output = img_output/255
-            output[output >= 0.7] = 1
-            output[output < 0.7] = 0
+            output[output >= 0.5] = 1
+            output[output < 0.5] = 0
+            cv2.imwrite(f'test{str(idx)}.png', output)
             ret_video_lst.append(output)
             ratio =  idx / self.video_masks.shape[0]
             self.proPropagete.setValue(int(ratio * 100))

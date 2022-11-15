@@ -41,12 +41,13 @@ class BasePredictor(object):
                  **kwargs):
 
         self.disnet = DISNet(3, 1)
-        state_dict = torch.load('disnet.ckpt', map_location='cpu')['state_dict']
+        state_dict = torch.load('disnet.ckpt', map_location='cuda:0')['state_dict']
         new_state_dict = {}
         for key, value in state_dict.items():
             new_key = key.replace('model.', '')
             new_state_dict[new_key] = value
         self.disnet.load_state_dict(new_state_dict, strict=False)
+        self.disnet = self.disnet.cuda()
         self.disnet.eval()
         print('disnet loaded')
         self.with_flip = with_flip
@@ -105,7 +106,7 @@ class BasePredictor(object):
         ])
         tn_img = transform(image)
         with torch.no_grad():
-            outputs, _ = self.disnet(tn_img.unsqueeze(0))
+            outputs, _ = self.disnet(tn_img.cuda().unsqueeze(0))
 
         # output = outputs[0].detach().squeeze(0).squeeze(0)
         output = torch_f.interpolate(
@@ -116,7 +117,7 @@ class BasePredictor(object):
 
         # output = output.detach().squeeze(0).squeeze(0)
 
-        return output.detach().squeeze(0).squeeze(0).numpy()
+        return output.detach().cpu().squeeze(0).squeeze(0).numpy()
 
 
 
