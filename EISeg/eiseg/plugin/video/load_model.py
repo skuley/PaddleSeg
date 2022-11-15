@@ -46,13 +46,9 @@ def load_model(model_path, param_path, use_gpu=None):
     model = paddle_infer.create_predictor(config)
     return model
 
-def load_pytorch_model(model_path):
+def load_pytorch_model(model_path, device):
     _, ext = os.path.splitext(model_path)
     if ext == '.ckpt':
-        if torch.cuda.is_available():
-            device = 'cuda:0'
-        else:
-            device = 'cpu'
         ckpt = torch.load(model_path, map_location=device)
         state_dict = ckpt['state_dict']
     else:
@@ -66,10 +62,9 @@ def load_pytorch_model(model_path):
             key = key.replace('model.', '')
             new_state_dict[key] = value
     disnet.load_state_dict(new_state_dict, strict=False)
+    disnet = disnet.to(device)
+    disnet.eval()
     return disnet
-
-
-
 
 def jit_load(path):
     model = paddle.jit.load(path)
